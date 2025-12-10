@@ -2,39 +2,193 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>MindAR - 3 Targets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projeto - 3 Targets (Heitor)</title>
 
+  <!-- A-Frame primeiro -->
   <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.0/dist/aframe.min.js"></script>
+  <!-- MindAR (versão estável conhecida) -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.7/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+    #status {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 10;
+    }
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+    button {
+      background: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #555; }
+  </style>
 </head>
 
 <body>
+  <div id="status">Aponte a câmera para um dos três targets</div>
+
+  <div id="controls">
+    <button id="btnScale">Aumentar Tamanho</button>
+    <button id="btnSpeed">Aumentar Velocidade</button>
+    <button id="btnStop">Parar Giro</button>
+  </div>
+
   <a-scene
     mindar-image="imageTargetSrc: targets.mind"
     color-space="sRGB"
-    embedded
+    renderer="colorManagement: true, physicallyCorrectLights"
     vr-mode-ui="enabled: false"
-    renderer="precision: mediump; antialias: true;"
+    device-orientation-permission-ui="enabled: false"
+    embedded
   >
     <a-assets>
+      <!-- IDs a serem referenciados nos modelos -->
       <a-asset-item id="avocado" src="Avocado.gltf"></a-asset-item>
-      <a-asset-item id="cube" src="AnimatedCube.gltf"></a-asset-item>
+      <a-asset-item id="animatedcube" src="AnimatedCube.gltf"></a-asset-item>
       <a-asset-item id="dragon" src="DragonAttenuation.gltf"></a-asset-item>
     </a-assets>
 
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-entity gltf-model="#avocado" scale="0.2 0.2 0.2"></a-entity>
+    <!-- Luzes -->
+    <a-entity light="type: ambient; intensity: 1.2"></a-entity>
+    <a-entity light="type: directional; intensity: 2" position="1 1 1"></a-entity>
+
+    <!-- Câmera -->
+    <a-camera look-controls="enabled: false"></a-camera>
+
+    <!-- TARGET 1 -->
+    <a-entity id="target1" mindar-image-target="targetIndex: 0">
+      <a-entity id="model1"
+                gltf-model="#avocado"
+                position="0 0 0.2"
+                rotation="0 45 0"
+                scale="0.8 0.8 0.8"
+                animation="property: rotation; to: 0 405 0; loop: true; dur: 4000">
+      </a-entity>
     </a-entity>
 
-    <a-entity mindar-image-target="targetIndex: 1">
-      <a-entity gltf-model="#cube" scale="0.2 0.2 0.2"></a-entity>
+    <!-- TARGET 2 -->
+    <a-entity id="target2" mindar-image-target="targetIndex: 1">
+      <a-entity id="model2"
+                gltf-model="#animatedcube"
+                position="0 0 0.2"
+                rotation="0 0 0"
+                scale="0.8 0.8 0.8"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+      </a-entity>
     </a-entity>
 
-    <a-entity mindar-image-target="targetIndex: 2">
-      <a-entity gltf-model="#dragon" scale="0.2 0.2 0.2"></a-entity>
+    <!-- TARGET 3 -->
+    <a-entity id="target3" mindar-image-target="targetIndex: 2">
+      <a-entity id="model3"
+                gltf-model="#dragon"
+                position="0 0 0.3"
+                rotation="0 90 0"
+                scale="0.6 0.6 0.6"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 4000">
+      </a-entity>
     </a-entity>
 
-    <a-camera></a-camera>
   </a-scene>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const status = document.getElementById("status");
+      const btnScale = document.getElementById("btnScale");
+      const btnSpeed = document.getElementById("btnSpeed");
+      const btnStop = document.getElementById("btnStop");
+
+      const models = [
+        document.getElementById("model1"),
+        document.getElementById("model2"),
+        document.getElementById("model3")
+      ];
+
+      const targets = [
+        document.getElementById("target1"),
+        document.getElementById("target2"),
+        document.getElementById("target3")
+      ];
+
+      let currentIndex = null;
+      let currentScale = 1;
+      let currentSpeed = 4000;
+      let spinning = true;
+
+      // eventos de targets
+      targets.forEach((t, i) => {
+        t.addEventListener("targetFound", () => {
+          currentIndex = i;
+          status.textContent = `Target ${i + 1} reconhecido!`;
+        });
+        t.addEventListener("targetLost", () => {
+          if (currentIndex === i) currentIndex = null;
+          status.textContent = "Aponte a câmera para um dos três targets";
+        });
+      });
+
+      // aumentar escala do modelo ativo
+      btnScale.addEventListener("click", () => {
+        if (currentIndex === null) return;
+        currentScale = +( (models[currentIndex].getAttribute("scale") || "1 1 1").split(" ")[0] );
+        currentScale += 0.2;
+        models[currentIndex].setAttribute("scale", `${currentScale} ${currentScale} ${currentScale}`);
+      });
+
+      // aumentar velocidade (diminuir dur)
+      btnSpeed.addEventListener("click", () => {
+        if (currentIndex === null || !spinning) return;
+        currentSpeed = Math.max(500, currentSpeed - 500);
+        models[currentIndex].setAttribute("animation", `property: rotation; to: 0 360 0; loop: true; dur: ${currentSpeed}`);
+      });
+
+      // parar / retomar giro
+      btnStop.addEventListener("click", () => {
+        if (currentIndex === null) return;
+        if (spinning) {
+          models[currentIndex].removeAttribute("animation");
+          spinning = false;
+          btnStop.innerText = "Retomar Giro";
+        } else {
+          models[currentIndex].setAttribute("animation", `property: rotation; to: 0 360 0; loop: true; dur: ${currentSpeed}`);
+          spinning = true;
+          btnStop.innerText = "Parar Giro";
+        }
+      });
+
+      // dica: detectar se targets.mind não foi carregado e avisar
+      fetch("targets.mind", { method: "HEAD" })
+        .then(res => {
+          if (!res.ok) {
+            status.textContent = "Arquivo targets.mind não encontrado (404). Faça upload na raiz do repositório.";
+            console.error("targets.mind não acessível:", res.status);
+          }
+        })
+        .catch(err => {
+          console.warn("Falha ao checar targets.mind:", err);
+        });
+    });
+  </script>
 </body>
 </html>
